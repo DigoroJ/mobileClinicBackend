@@ -2,14 +2,12 @@ const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-const queries = require('./queries');
+const queries = require('../queries/queries');
 
 
-/*
-|--------------------------------------------------------------------------
-| SUPABASE DATABASE CONNECTION
-|--------------------------------------------------------------------------
-*/
+// ======================================================
+// DATABASE CONNECTION
+// ======================================================
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -20,11 +18,15 @@ const pool = new Pool({
 });
 
 
-/*
-|--------------------------------------------------------------------------
-| AUTHENTICATION
-|--------------------------------------------------------------------------
-*/
+// Test database connection when the application starts
+pool.on('error', (error) => {
+    console.error('Unexpected PostgreSQL pool error:', error);
+});
+
+
+// ======================================================
+// AUTHENTICATION
+// ======================================================
 
 const addUser = async (req, res) => {
 
@@ -42,6 +44,7 @@ const addUser = async (req, res) => {
         if (!first_name || !last_name || !email || !password) {
 
             return res.status(400).json({
+                success: false,
                 error: 'First name, last name, email and password are required'
             });
 
@@ -55,6 +58,7 @@ const addUser = async (req, res) => {
         if (existingUser.rows.length > 0) {
 
             return res.status(409).json({
+                success: false,
                 error: 'Email already exists'
             });
 
@@ -74,20 +78,27 @@ const addUser = async (req, res) => {
             ]
         );
 
+        const user = result.rows[0];
+
+        delete user.password;
+
         res.status(201).json({
+            success: true,
             message: 'User created successfully',
-            user: result.rows[0]
+            user
         });
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Add user error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Unable to create user'
         });
 
     }
+
 };
 
 
@@ -100,6 +111,15 @@ const login = async (req, res) => {
             password
         } = req.body;
 
+        if (!email || !password) {
+
+            return res.status(400).json({
+                success: false,
+                error: 'Email and password are required'
+            });
+
+        }
+
         const result = await pool.query(
             queries.getUserByEmail,
             [email]
@@ -108,6 +128,7 @@ const login = async (req, res) => {
         if (result.rows.length === 0) {
 
             return res.status(401).json({
+                success: false,
                 error: 'Invalid email or password'
             });
 
@@ -123,6 +144,7 @@ const login = async (req, res) => {
         if (!validPassword) {
 
             return res.status(401).json({
+                success: false,
                 error: 'Invalid email or password'
             });
 
@@ -142,6 +164,7 @@ const login = async (req, res) => {
         delete user.password;
 
         res.json({
+            success: true,
             message: 'Login successful',
             token,
             user
@@ -149,21 +172,21 @@ const login = async (req, res) => {
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Login error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Login failed'
         });
 
     }
+
 };
 
 
-/*
-|--------------------------------------------------------------------------
-| PATIENTS
-|--------------------------------------------------------------------------
-*/
+// ======================================================
+// PATIENTS
+// ======================================================
 
 const getPatients = async (req, res) => {
 
@@ -173,17 +196,22 @@ const getPatients = async (req, res) => {
             queries.getUsers
         );
 
-        res.json(result.rows);
+        res.json({
+            success: true,
+            data: result.rows
+        });
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Get patients error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Unable to retrieve patients'
         });
 
     }
+
 };
 
 
@@ -199,30 +227,34 @@ const getPatientById = async (req, res) => {
         if (result.rows.length === 0) {
 
             return res.status(404).json({
+                success: false,
                 error: 'Patient not found'
             });
 
         }
 
-        res.json(result.rows[0]);
+        res.json({
+            success: true,
+            data: result.rows[0]
+        });
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Get patient error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Unable to retrieve patient'
         });
 
     }
+
 };
 
 
-/*
-|--------------------------------------------------------------------------
-| SERVICES
-|--------------------------------------------------------------------------
-*/
+// ======================================================
+// SERVICES
+// ======================================================
 
 const getServices = async (req, res) => {
 
@@ -232,25 +264,28 @@ const getServices = async (req, res) => {
             queries.getServices
         );
 
-        res.json(result.rows);
+        res.json({
+            success: true,
+            data: result.rows
+        });
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Get services error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Unable to retrieve services'
         });
 
     }
+
 };
 
 
-/*
-|--------------------------------------------------------------------------
-| DOCTORS
-|--------------------------------------------------------------------------
-*/
+// ======================================================
+// DOCTORS
+// ======================================================
 
 const getDoctors = async (req, res) => {
 
@@ -260,17 +295,22 @@ const getDoctors = async (req, res) => {
             queries.getDoctors
         );
 
-        res.json(result.rows);
+        res.json({
+            success: true,
+            data: result.rows
+        });
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Get doctors error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Unable to retrieve doctors'
         });
 
     }
+
 };
 
 
@@ -286,22 +326,28 @@ const getDoctorById = async (req, res) => {
         if (result.rows.length === 0) {
 
             return res.status(404).json({
+                success: false,
                 error: 'Doctor not found'
             });
 
         }
 
-        res.json(result.rows[0]);
+        res.json({
+            success: true,
+            data: result.rows[0]
+        });
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Get doctor error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Unable to retrieve doctor'
         });
 
     }
+
 };
 
 
@@ -314,25 +360,28 @@ const getDoctorsByService = async (req, res) => {
             [req.params.serviceId]
         );
 
-        res.json(result.rows);
+        res.json({
+            success: true,
+            data: result.rows
+        });
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Get doctors by service error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Unable to retrieve doctors for service'
         });
 
     }
+
 };
 
 
-/*
-|--------------------------------------------------------------------------
-| APPOINTMENTS
-|--------------------------------------------------------------------------
-*/
+// ======================================================
+// APPOINTMENTS
+// ======================================================
 
 const bookAppointment = async (req, res) => {
 
@@ -355,6 +404,7 @@ const bookAppointment = async (req, res) => {
         ) {
 
             return res.status(400).json({
+                success: false,
                 error: 'All appointment fields are required'
             });
 
@@ -372,19 +422,22 @@ const bookAppointment = async (req, res) => {
         );
 
         res.status(201).json({
+            success: true,
             message: 'Appointment booked successfully',
             appointment: result.rows[0]
         });
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Book appointment error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Unable to book appointment'
         });
 
     }
+
 };
 
 
@@ -396,17 +449,22 @@ const getAppointments = async (req, res) => {
             queries.getAppointments
         );
 
-        res.json(result.rows);
+        res.json({
+            success: true,
+            data: result.rows
+        });
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Get appointments error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Unable to retrieve appointments'
         });
 
     }
+
 };
 
 
@@ -419,17 +477,22 @@ const getAppointmentsByPatient = async (req, res) => {
             [req.params.patientId]
         );
 
-        res.json(result.rows);
+        res.json({
+            success: true,
+            data: result.rows
+        });
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Get patient appointments error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Unable to retrieve patient appointments'
         });
 
     }
+
 };
 
 
@@ -445,22 +508,28 @@ const getAppointmentById = async (req, res) => {
         if (result.rows.length === 0) {
 
             return res.status(404).json({
+                success: false,
                 error: 'Appointment not found'
             });
 
         }
 
-        res.json(result.rows[0]);
+        res.json({
+            success: true,
+            data: result.rows[0]
+        });
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Get appointment error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Unable to retrieve appointment'
         });
 
     }
+
 };
 
 
@@ -476,33 +545,35 @@ const cancelAppointment = async (req, res) => {
         if (result.rows.length === 0) {
 
             return res.status(404).json({
+                success: false,
                 error: 'Appointment not found'
             });
 
         }
 
         res.json({
+            success: true,
             message: 'Appointment cancelled',
             appointment: result.rows[0]
         });
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Cancel appointment error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Unable to cancel appointment'
         });
 
     }
+
 };
 
 
-/*
-|--------------------------------------------------------------------------
-| MEDICAL RECORDS
-|--------------------------------------------------------------------------
-*/
+// ======================================================
+// MEDICAL RECORDS
+// ======================================================
 
 const getMedicalRecords = async (req, res) => {
 
@@ -513,17 +584,22 @@ const getMedicalRecords = async (req, res) => {
             [req.params.patientId]
         );
 
-        res.json(result.rows);
+        res.json({
+            success: true,
+            data: result.rows
+        });
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Get medical records error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Unable to retrieve medical records'
         });
 
     }
+
 };
 
 
@@ -539,30 +615,34 @@ const getMedicalRecordById = async (req, res) => {
         if (result.rows.length === 0) {
 
             return res.status(404).json({
+                success: false,
                 error: 'Medical record not found'
             });
 
         }
 
-        res.json(result.rows[0]);
+        res.json({
+            success: true,
+            data: result.rows[0]
+        });
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Get medical record error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Unable to retrieve medical record'
         });
 
     }
+
 };
 
 
-/*
-|--------------------------------------------------------------------------
-| PRESCRIPTIONS
-|--------------------------------------------------------------------------
-*/
+// ======================================================
+// PRESCRIPTIONS
+// ======================================================
 
 const getPrescriptions = async (req, res) => {
 
@@ -573,25 +653,28 @@ const getPrescriptions = async (req, res) => {
             [req.params.patientId]
         );
 
-        res.json(result.rows);
+        res.json({
+            success: true,
+            data: result.rows
+        });
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Get prescriptions error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Unable to retrieve prescriptions'
         });
 
     }
+
 };
 
 
-/*
-|--------------------------------------------------------------------------
-| MESSAGES
-|--------------------------------------------------------------------------
-*/
+// ======================================================
+// MESSAGES
+// ======================================================
 
 const getMessages = async (req, res) => {
 
@@ -602,17 +685,22 @@ const getMessages = async (req, res) => {
             [req.params.patientId]
         );
 
-        res.json(result.rows);
+        res.json({
+            success: true,
+            data: result.rows
+        });
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Get messages error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Unable to retrieve messages'
         });
 
     }
+
 };
 
 
@@ -627,30 +715,42 @@ const sendMessage = async (req, res) => {
             message
         } = req.body;
 
+        if (!sender_id || !recipient_id || !message) {
+
+            return res.status(400).json({
+                success: false,
+                error: 'Sender, recipient and message are required'
+            });
+
+        }
+
         const result = await pool.query(
             queries.createMessage,
             [
                 sender_id,
                 recipient_id,
-                subject,
+                subject || null,
                 message
             ]
         );
 
         res.status(201).json({
+            success: true,
             message: 'Message sent successfully',
             data: result.rows[0]
         });
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Send message error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Unable to send message'
         });
 
     }
+
 };
 
 
@@ -663,25 +763,37 @@ const markMessageRead = async (req, res) => {
             [req.params.id]
         );
 
-        res.json(result.rows[0]);
+        if (result.rows.length === 0) {
+
+            return res.status(404).json({
+                success: false,
+                error: 'Message not found'
+            });
+
+        }
+
+        res.json({
+            success: true,
+            data: result.rows[0]
+        });
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Mark message read error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Unable to update message'
         });
 
     }
+
 };
 
 
-/*
-|--------------------------------------------------------------------------
-| HEALTH TIPS
-|--------------------------------------------------------------------------
-*/
+// ======================================================
+// HEALTH TIPS
+// ======================================================
 
 const getHealthTips = async (req, res) => {
 
@@ -691,25 +803,28 @@ const getHealthTips = async (req, res) => {
             queries.getHealthTips
         );
 
-        res.json(result.rows);
+        res.json({
+            success: true,
+            data: result.rows
+        });
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Get health tips error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Unable to retrieve health tips'
         });
 
     }
+
 };
 
 
-/*
-|--------------------------------------------------------------------------
-| SYMPTOM CHECKER
-|--------------------------------------------------------------------------
-*/
+// ======================================================
+// SYMPTOMS
+// ======================================================
 
 const getSymptoms = async (req, res) => {
 
@@ -719,25 +834,28 @@ const getSymptoms = async (req, res) => {
             queries.getSymptoms
         );
 
-        res.json(result.rows);
+        res.json({
+            success: true,
+            data: result.rows
+        });
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Get symptoms error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Unable to retrieve symptoms'
         });
 
     }
+
 };
 
 
-/*
-|--------------------------------------------------------------------------
-| DASHBOARD
-|--------------------------------------------------------------------------
-*/
+// ======================================================
+// DASHBOARD
+// ======================================================
 
 const getDashboardStats = async (req, res) => {
 
@@ -760,6 +878,7 @@ const getDashboardStats = async (req, res) => {
         );
 
         res.json({
+            success: true,
             patients: Number(patients.rows[0].total),
             doctors: Number(doctors.rows[0].total),
             appointments: Number(appointments.rows[0].total),
@@ -768,54 +887,66 @@ const getDashboardStats = async (req, res) => {
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Dashboard stats error:', error);
 
         res.status(500).json({
+            success: false,
             error: 'Unable to retrieve dashboard statistics'
         });
 
     }
+
 };
 
 
-/*
-|--------------------------------------------------------------------------
-| EXPORT CONTROLLERS
-|--------------------------------------------------------------------------
-*/
+// ======================================================
+// EXPORT CONTROLLERS
+// ======================================================
 
 module.exports = {
 
+    // Authentication
     addUser,
     login,
 
+    // Patients
     getPatients,
     getPatientById,
 
+    // Services
     getServices,
 
+    // Doctors
     getDoctors,
     getDoctorById,
     getDoctorsByService,
 
+    // Appointments
     bookAppointment,
     getAppointments,
     getAppointmentsByPatient,
     getAppointmentById,
     cancelAppointment,
 
+    // Medical records
     getMedicalRecords,
     getMedicalRecordById,
 
+    // Prescriptions
     getPrescriptions,
 
+    // Messages
     getMessages,
     sendMessage,
     markMessageRead,
 
+    // Health tips
     getHealthTips,
 
+    // Symptoms
     getSymptoms,
 
+    // Dashboard
     getDashboardStats
+
 };
